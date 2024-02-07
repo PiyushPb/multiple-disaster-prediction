@@ -209,15 +209,79 @@ def earthquake_section():
         st.table(predictions_df)
 
 
+def rainfall_section():
+    st.title("Rainfall prediction")
+    st.write("This section provides information about the rainfall.")
+
+    with open('./models/rainfall_models.pkl', 'rb') as file:
+        loaded_models = pickle.load(file)
+
+    st.subheader("Enter Data for Prediction (comma-separated):")
+    data_input = st.text_input("Enter values separated by commas (e.g., 2020,18,16,65,1013,6,8)", "2020,18,16,65,1013,6,8")
+
+    st.subheader("Input Data:")
+    input_data = {
+        'Feature': ['YEAR', 'TEMPAVG', 'DPavg', 'Humidity avg', 'SLPavg', 'visibilityavg', 'windavg'],
+        'Value': [float(value.strip()) for value in data_input.split(',')]
+    }
+
+    input_data_df = pd.DataFrame(input_data)
+    st.table(input_data_df)
+
+    from sklearn.model_selection import train_test_split
+    from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+    from sklearn.linear_model import LinearRegression, Ridge
+    from sklearn.metrics import mean_squared_error
+
+    if st.button("Generate Predictions"):
+        data_point = [float(value.strip()) for value in data_input.split(',')]
+
+        new_data_point = np.array(data_point).reshape(1, -1)
+
+        st.subheader("Model Predictions and Accuracy:")
+        st.write("Here are the predictions and Mean Absolute Error (MAE) from different models:")
+
+        predictions_table = {
+            'Model': [],
+            'Prediction': [],
+            'MAE': []
+        }
+
+        data = pd.read_csv("../data/rainfall.csv")
+
+        x = data.iloc[:,:7].values
+        y = data.iloc[:,7].values
+
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.20, random_state=0)
+
+        models = [
+            ('RF', RandomForestRegressor()),
+            ('LR', LinearRegression()),
+            ('Ridge', Ridge()),
+            ('Lasso', GradientBoostingRegressor())
+        ]
+
+        for name, model in models:
+            model.fit(x_train, y_train)
+            y_pred = model.predict(x_test)
+            mae = mean_squared_error(y_test, y_pred)
+            predictions_table['Model'].append(name)
+            predictions_table['Prediction'].append(model.predict(new_data_point)[0])
+            predictions_table['MAE'].append(mae)
+
+        predictions_df = pd.DataFrame(predictions_table)
+        st.table(predictions_df)
 
 def main():
     st.sidebar.title("Sidebar")
-    selected_section = st.sidebar.radio("Select Section", [ "Kerala Flood Prediction", "Earthquake Prediction"])
+    selected_section = st.sidebar.radio("Select Section", [ "Kerala Flood Prediction", "Earthquake Prediction", "Rainfall Prediction"])
 
     if selected_section == "Kerala Flood Prediction":
         kerala_flood_section()
     if selected_section == "Earthquake Prediction":
         earthquake_section()
+    if selected_section == "Rainfall Prediction":
+        rainfall_section()
 
 if __name__ == "__main__":
     main()
